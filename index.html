@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Nilai Siswa (Tanpa Database)</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f7f6; }
+        h2 { color: #333; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        form { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 10px; margin-bottom: 20px; }
+        input, button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #218838; }
+        .btn-action { margin-bottom: 15px; display: flex; gap: 10px; }
+        .btn-secondary { background-color: #007bff; }
+        .btn-secondary:hover { background-color: #0056b3; }
+        .btn-danger { background-color: #dc3545; }
+        .btn-danger:hover { background-color: #bd2130; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background-color: #007bff; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .lulus { color: green; font-weight: bold; }
+        .remedi { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Aplikasi Data & Nilai Siswa</h2>
+    
+    <form id="studentForm">
+        <input type="text" id="name" placeholder="Nama Siswa" required>
+        <input type="number" id="tugas" placeholder="Nilai Tugas" min="0" max="100" required>
+        <input type="number" id="uts" placeholder="Nilai UTS" min="0" max="100" required>
+        <input type="number" id="uas" placeholder="Nilai UAS" min="0" max="100" required>
+        <button type="submit">Tambah Data</button>
+    </form>
+
+    <div class="btn-action">
+        <button onclick="exportToCSV()" class="btn-secondary">Export ke CSV (Excel)</button>
+        <button onclick="clearData()" class="btn-danger">Hapus Semua Data</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Nama Siswa</th>
+                <th>Tugas</th>
+                <th>UTS</th>
+                <th>UAS</th>
+                <th>Nilai Akhir</th>
+                <th>Status</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody id="studentTableBody">
+            </tbody>
+    </table>
+</div>
+
+<script>
+    let students = JSON.parse(localStorage.getItem('students')) || [];
+
+    function saveAndRender() {
+        localStorage.setItem('students', JSON.stringify(students));
+        renderTable();
+    }
+
+    function calculateFinalGrade(tugas, uts, uas) {
+        // Bobot: Tugas 30%, UTS 30%, UAS 40%
+        return (tugas * 0.3) + (uts * 0.3) + (uas * 0.4);
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('studentTableBody');
+        tbody.innerHTML = '';
+
+        students.forEach((student, index) => {
+            const finalGrade = calculateFinalGrade(student.tugas, student.uts, student.uas);
+            const status = finalGrade >= 75 ? '<span class="lulus">LULUS</span>' : '<span class="remedi">REMEDI</span>';
+
+            const row = `<tr>
+                <td>${index + 1}</td>
+                <td>${student.name}</td>
+                <td>${student.tugas}</td>
+                <td>${student.uts}</td>
+                <td>${student.uas}</td>
+                <td>${finalGrade.toFixed(1)}</td>
+                <td>${status}</td>
+                <td><button onclick="deleteStudent(${index})" class="btn-danger" style="padding: 5px 10px;">Hapus</button></td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    document.getElementById('studentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const name = document.getElementById('name').value;
+        const tugas = parseFloat(document.getElementById('tugas').value);
+        const uts = parseFloat(document.getElementById('uts').value);
+        const uas = parseFloat(document.getElementById('uas').value);
+
+        students.push({ name, tugas, uts, uas });
+        saveAndRender();
+
+        this.reset();
+    });
+
+    function deleteStudent(index) {
+        students.splice(index, 1);
+        saveAndRender();
+    }
+
+    function clearData() {
+        if (confirm('Yakin ingin menghapus semua data?')) {
+            students = [];
+            saveAndRender();
+        }
+    }
+
+    function exportToCSV() {
+        if (students.length === 0) {
+            alert('Belum ada data untuk di-export!');
+            return;
+        }
+
+        let csvContent = "data:text/csv;charset=utf-8,Nama,Tugas,UTS,UAS,Nilai Akhir,Status\n";
+        students.forEach(s => {
+            const final = calculateFinalGrade(s.tugas, s.uts, s.uas);
+            const status = final >= 75 ? 'LULUS' : 'REMEDI';
+            csvContent += `${s.name},${s.tugas},${s.uts},${s.uas},${final.toFixed(1)},${status}\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "data_nilai_siswa.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // Render data awal saat halaman dimuat
+    renderTable();
+</script>
+
+</body>
+</html>
